@@ -73,5 +73,13 @@ upskill/*.md
 .agents/**/*.log
 .agents/usage/
 
+# Daily job automation local outputs and secrets
+automation/logs/
+automation/.env
+automation/morning-job-agent.env
+automation/.git.local-backup/
+automation/*credentials*.json
+automation/*service-account*.json
+
 # Brainstorm mockups (superpowers visual companion) - never ship
 .superpowers/

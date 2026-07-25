@@ -1,0 +1,102 @@
+name: Morning Job Application Agent
+
+on:
+  schedule:
+    # 09:00 Asia/Kolkata = 03:30 UTC.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morning-job-application-agent
+  cancel-in-progress: false
+
+jobs:
+  morning-job-agent:
+    name: Scrape, rank, apply, and sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      GOOGLE_SHEET_NAME: ${{ vars.GOOGLE_SHEET_NAME || 'Job Applications' }}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Restore personal job-search state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            job_scraper/seen_jobs.json
+            job_search_tracker.csv
+            cv/main_*.tex
+            cover_letters/cover_*.tex
+            cover_letters/Cover_*.tex
+          key: morning-job-state-${{ github.run_id }}
+          restore-keys: |
+            morning-job-state-
+
+      - name: Ensure state directories exist
+        run: |
+          mkdir -p job_scraper automation/logs cv cover_letters
+          if [ ! -f job_scraper/seen_jobs.json ]; then
+            printf '{"seen":{}}\n' > job_scraper/seen_jobs.json
+          fi
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+
+      - name: Install LaTeX and PDF tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            poppler-utils \
+            texlive-fonts-recommended \
+            texlive-latex-extra \
+            texlive-luatex \
+            texlive-xetex
+
+      - name: Run Codex daily job workflow
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: automation/morning-job-agent-prompt.md
+          output-file: automation/logs/morning-job-agent-last-message.md
+          sandbox: danger-full-access
+          safety-strategy: drop-sudo
+          codex-args: '["--search", "--ask-for-approval", "never"]'
+
+      - name: Sync results to Google Sheets
+        if: always()
+        run: node automation/sync-google-sheet.mjs
+
+      - name: Save personal job-search state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            job_scraper/seen_jobs.json
+            job_search_tracker.csv
+            cv/main_*.tex
+            cover_letters/cover_*.tex
+            cover_letters/Cover_*.tex
+          key: morning-job-state-${{ github.run_id }}
+
+      - name: Upload run logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: morning-job-agent-logs-${{ github.run_id }}
+          path: |
+            automation/logs/
+          retention-days: 14
