@@ -74,7 +74,6 @@ jobs:
           output-file: automation/logs/morning-job-agent-last-message.md
           sandbox: danger-full-access
           safety-strategy: drop-sudo
-          codex-args: '["--ask-for-approval", "never"]'
 
       - name: Sync results to Google Sheets
         if: always()
