@@ -77,6 +77,7 @@ jobs:
 
       - name: Sync results to Google Sheets
         if: always()
+        timeout-minutes: 5
         run: node automation/sync-google-sheet.mjs
 
       - name: Save personal job-search state

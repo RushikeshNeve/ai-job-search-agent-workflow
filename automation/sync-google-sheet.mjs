@@ -9,6 +9,7 @@ const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 const sheetName = process.env.GOOGLE_SHEET_NAME || "Job Applications";
 const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+const requestTimeoutMs = Number(process.env.GOOGLE_SHEETS_REQUEST_TIMEOUT_MS || 30000);
 
 if (!spreadsheetId) {
   console.log("Google Sheets sync skipped: GOOGLE_SHEET_ID is not set.");
@@ -67,6 +68,7 @@ async function getAccessToken(credentials) {
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
+    signal: AbortSignal.timeout(requestTimeoutMs),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
@@ -84,6 +86,7 @@ async function getAccessToken(credentials) {
 async function sheetsRequest(token, urlPath, options = {}) {
   const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}${urlPath}`, {
     ...options,
+    signal: options.signal || AbortSignal.timeout(requestTimeoutMs),
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
