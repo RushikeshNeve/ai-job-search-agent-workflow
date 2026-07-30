@@ -15,11 +15,12 @@ Important isolation rule:
 - Use `automation/meenakshi_job_search_tracker.csv` for tracked applications.
 
 Hard filters:
-- Primary target: full-time fresher, 0 years experience, entry-level, new-graduate, campus, and Graduate Engineer Trainee jobs.
+- Primary target: full-time fresher jobs with 0 years experience or explicitly less than 1 year of experience.
 - Preferred titles: AI Engineer, GenAI Engineer, Data Engineer, ML Engineer, Backend Engineer, Software Engineer, Data Analyst, Graduate Engineer Trainee, Junior AI/Data/Backend Engineer, or equivalent.
 - Primary location: Bengaluru/Bangalore. Pune and India remote are acceptable only as secondary options when the role is an especially strong fit.
-- Strongly prefer postings that explicitly say fresher, freshers, 0 years, 0-1 years, graduate engineer trainee, GET, campus, new grad, or entry level.
-- Skip roles requiring more than 1 year of professional experience unless the posting clearly accepts freshers, students, new graduates, or project experience.
+- Require a clear fresher signal in the posting: fresher, freshers, 0 years, less than 1 year, 0-1 years, graduate engineer trainee, GET, campus, new grad, or entry level.
+- Reject postings requiring 1+ years, 1-2 years, 2+ years, or "minimum 1 year" unless the same posting explicitly says freshers/new graduates are eligible.
+- Reject postings where the experience requirement is unclear and the title/body does not clearly indicate fresher, new grad, campus, GET, or entry-level hiring.
 - Skip internships, trainee-only unpaid programs, senior, lead, staff, manager, SRE, DevOps, support, sales, testing-only QA, and infrastructure-administration roles.
 - Strong matches should involve Python, SQL, RAG, LangChain, OpenAI APIs, vector databases, FastAPI, Node.js, ETL/data pipelines, analytics, or backend APIs.
 
@@ -37,13 +38,13 @@ Workflow:
    - `"Graduate Engineer Trainee" Python SQL Bangalore`
    - `"entry level" "AI Engineer" Bangalore fresher`
 5. Deduplicate against `job_scraper/meenakshi_seen_jobs.json` and `automation/meenakshi_job_search_tracker.csv`.
-6. Fetch detail for promising results only. Do not score from title alone if the posting body cannot be fetched.
+6. Fetch detail for promising results only. Do not score from title alone if the posting body cannot be fetched. Before ranking, apply the strict experience gate: keep only jobs whose fetched posting clearly supports fresher/0-year/less-than-1-year eligibility.
 7. Rank the new jobs with triage scores from 0-100:
    - Technical match: 35%
    - Fresher/0-year experience fit: 30%
    - Bengaluru/Bangalore location fit: 20%
    - Career alignment with GenAI/data/backend: 15%
-8. Store every fetched posting additively in `job_scraper/meenakshi_seen_jobs.json` with fields: `title`, `company`, `url`, `first_seen`, `fit`, `status`, `rank_score`, `rank_verdict`, `rank_date`, and `notes` where available.
+8. Store every fetched posting additively in `job_scraper/meenakshi_seen_jobs.json` with fields: `title`, `company`, `url`, `first_seen`, `fit`, `status`, `rank_score`, `rank_verdict`, `rank_date`, and `notes` where available. Mark jobs that fail the strict experience gate as `skipped` with notes explaining the experience requirement.
 9. For Strong Fit jobs only, create a short application note in `automation/meenakshi_applications/` summarizing why it fits, resume bullets to emphasize, and any missing requirements. Do not create tailored LaTeX CV or cover-letter files unless a Meenakshi-specific template/profile setup is added later.
 10. Leave a concise final summary with:
    - new job links
