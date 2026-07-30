@@ -77,6 +77,7 @@ upskill/*.md
 automation/logs/
 automation/.env
 automation/morning-job-agent.env
+automation/meenakshi-job-agent.env
 automation/.git.local-backup/
 automation/*credentials*.json
 automation/*service-account*.json

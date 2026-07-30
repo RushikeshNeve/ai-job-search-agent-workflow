@@ -155,3 +155,80 @@ GitHub -> Actions -> Morning Job Application Agent -> Run workflow
 ```
 
 Use the manual run once to verify secrets and Sheets sync before waiting for the next 09:00 scheduled run.
+
+## Meenakshi Job Agent Automation
+
+This folder also contains a separate automation for Meenakshi Sutar, based on:
+
+```text
+automation/meenakshi-resume-profile.md
+```
+
+It uses separate state so it does not mix with Rushikesh's job-search history:
+
+```text
+job_scraper/meenakshi_seen_jobs.json
+automation/meenakshi_job_search_tracker.csv
+automation/meenakshi_applications/
+```
+
+The GitHub Actions workflow is defined at:
+
+```text
+.github/workflows/meenakshi-job-agent.yml
+```
+
+It runs every day at `04:00 UTC`, which is `09:30 Asia/Kolkata`, and can also be started manually from the GitHub Actions tab.
+
+### Required GitHub Secrets
+
+The workflow always needs:
+
+```text
+OPENAI_API_KEY
+```
+
+For Google Sheets, either reuse the existing sheet secrets:
+
+```text
+GOOGLE_SHEET_ID
+GOOGLE_SERVICE_ACCOUNT_JSON
+```
+
+Or add Meenakshi-specific secrets:
+
+```text
+MEENAKSHI_GOOGLE_SHEET_ID
+MEENAKSHI_GOOGLE_SERVICE_ACCOUNT_JSON
+```
+
+Optional repository variable:
+
+```text
+MEENAKSHI_GOOGLE_SHEET_NAME=Meenakshi Job Applications
+```
+
+If this variable is absent, the workflow uses `Meenakshi Job Applications`.
+
+### Manual Test
+
+Run the Meenakshi workflow locally:
+
+```powershell
+automation\run-meenakshi-job-agent.ps1 -FullPermission
+```
+
+Run only the Sheets sync against Meenakshi's state:
+
+```powershell
+$env:SEEN_JOBS_PATH = "job_scraper/meenakshi_seen_jobs.json"
+$env:TRACKER_CSV_PATH = "automation/meenakshi_job_search_tracker.csv"
+$env:GOOGLE_SHEET_NAME = "Meenakshi Job Applications"
+node automation\sync-google-sheet.mjs
+```
+
+### Current Scope
+
+The Meenakshi automation searches, ranks, saves state, writes short application notes for Strong Fit jobs, and syncs to Google Sheets.
+
+It does not currently generate tailored LaTeX CVs or cover letters, because the existing `$apply` workflow and templates are Rushikesh-specific. Add a Meenakshi-specific profile/template setup before enabling automated document drafting.

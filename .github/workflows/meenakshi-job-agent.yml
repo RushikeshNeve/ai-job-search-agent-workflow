@@ -1,0 +1,93 @@
+name: Meenakshi Job Application Agent
+
+on:
+  schedule:
+    # 09:30 Asia/Kolkata = 04:00 UTC.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meenakshi-job-application-agent
+  cancel-in-progress: false
+
+jobs:
+  meenakshi-job-agent:
+    name: Search, rank, and sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GOOGLE_SHEET_ID: ${{ secrets.MEENAKSHI_GOOGLE_SHEET_ID || secrets.GOOGLE_SHEET_ID }}
+      GOOGLE_SHEET_NAME: ${{ vars.MEENAKSHI_GOOGLE_SHEET_NAME || 'Meenakshi Job Applications' }}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.MEENAKSHI_GOOGLE_SERVICE_ACCOUNT_JSON || secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+      SEEN_JOBS_PATH: job_scraper/meenakshi_seen_jobs.json
+      TRACKER_CSV_PATH: automation/meenakshi_job_search_tracker.csv
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Restore Meenakshi job-search state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            job_scraper/meenakshi_seen_jobs.json
+            automation/meenakshi_job_search_tracker.csv
+            automation/meenakshi_applications/
+          key: meenakshi-job-state-${{ github.run_id }}
+          restore-keys: |
+            meenakshi-job-state-
+
+      - name: Ensure Meenakshi state exists
+        run: |
+          mkdir -p job_scraper automation/logs automation/meenakshi_applications
+          if [ ! -f job_scraper/meenakshi_seen_jobs.json ]; then
+            printf '{"seen":{}}\n' > job_scraper/meenakshi_seen_jobs.json
+          fi
+          if [ ! -f automation/meenakshi_job_search_tracker.csv ]; then
+            printf 'company,role,source,status,cv_file,cover_letter_file,notes\n' > automation/meenakshi_job_search_tracker.csv
+          fi
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+
+      - name: Run Codex Meenakshi job workflow
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: automation/meenakshi-job-agent-prompt.md
+          output-file: automation/logs/meenakshi-job-agent-last-message.md
+          sandbox: danger-full-access
+          safety-strategy: drop-sudo
+
+      - name: Sync Meenakshi results to Google Sheets
+        if: always()
+        timeout-minutes: 5
+        run: node automation/sync-google-sheet.mjs
+
+      - name: Save Meenakshi job-search state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            job_scraper/meenakshi_seen_jobs.json
+            automation/meenakshi_job_search_tracker.csv
+            automation/meenakshi_applications/
+          key: meenakshi-job-state-${{ github.run_id }}
+
+      - name: Upload Meenakshi run logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meenakshi-job-agent-logs-${{ github.run_id }}
+          path: |
+            automation/logs/
+          retention-days: 14

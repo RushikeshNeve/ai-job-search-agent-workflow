@@ -10,6 +10,8 @@ const sheetName = process.env.GOOGLE_SHEET_NAME || "Job Applications";
 const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 const requestTimeoutMs = Number(process.env.GOOGLE_SHEETS_REQUEST_TIMEOUT_MS || 30000);
+const seenJobsPath = path.resolve(repoRoot, process.env.SEEN_JOBS_PATH || "job_scraper/seen_jobs.json");
+const trackerCsvPath = path.resolve(repoRoot, process.env.TRACKER_CSV_PATH || "job_search_tracker.csv");
 
 if (!spreadsheetId) {
   console.log("Google Sheets sync skipped: GOOGLE_SHEET_ID is not set.");
@@ -131,7 +133,7 @@ function csvParse(text) {
 }
 
 function readTracker() {
-  const trackerPath = path.join(repoRoot, "job_search_tracker.csv");
+  const trackerPath = trackerCsvPath;
   if (!fs.existsSync(trackerPath)) return new Map();
   const parsed = csvParse(fs.readFileSync(trackerPath, "utf8"));
   const [header, ...records] = parsed;
@@ -155,7 +157,7 @@ function readJson(filePath) {
 }
 
 function readSeenRows() {
-  const seenPath = path.join(repoRoot, "job_scraper", "seen_jobs.json");
+  const seenPath = seenJobsPath;
   if (!fs.existsSync(seenPath)) return [];
   const seen = readJson(seenPath).seen || {};
   const tracker = readTracker();
