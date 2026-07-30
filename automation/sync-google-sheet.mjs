@@ -12,6 +12,13 @@ const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 const requestTimeoutMs = Number(process.env.GOOGLE_SHEETS_REQUEST_TIMEOUT_MS || 30000);
 const seenJobsPath = path.resolve(repoRoot, process.env.SEEN_JOBS_PATH || "job_scraper/seen_jobs.json");
 const trackerCsvPath = path.resolve(repoRoot, process.env.TRACKER_CSV_PATH || "job_search_tracker.csv");
+const excludedStatuses = new Set(
+  (process.env.SYNC_EXCLUDE_STATUSES || "")
+    .split(",")
+    .map((status) => status.trim().toLowerCase())
+    .filter(Boolean),
+);
+const replaceSheet = /^(1|true|yes)$/i.test(process.env.SYNC_REPLACE_SHEET || "");
 
 if (!spreadsheetId) {
   console.log("Google Sheets sync skipped: GOOGLE_SHEET_ID is not set.");
@@ -164,6 +171,11 @@ function readSeenRows() {
   const runDate = new Date().toISOString().slice(0, 10);
   return Object.values(seen)
     .filter((job) => job && job.url)
+    .filter((job) => {
+      const tracked = tracker.get(job.url) || {};
+      const status = String(tracked.trackerStatus || job.status || "").toLowerCase();
+      return !excludedStatuses.has(status);
+    })
     .map((job) => {
       const tracked = tracker.get(job.url) || {};
       return [
@@ -199,6 +211,21 @@ async function ensureSheet(token) {
 }
 
 async function syncRows(token, rows) {
+  if (replaceSheet) {
+    await sheetsRequest(token, `/values/${encodeURIComponent(sheetName)}!A2:L:clear`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    if (rows.length) {
+      await sheetsRequest(token, `/values/${encodeURIComponent(sheetName)}!A2:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+        method: "POST",
+        body: JSON.stringify({ values: rows }),
+      });
+    }
+    console.log(`Google Sheets sync complete: sheet replaced with ${rows.length} rows.`);
+    return;
+  }
+
   const existing = await sheetsRequest(token, `/values/${encodeURIComponent(sheetName)}!A:L`);
   const values = existing.values || [];
   const urlToRow = new Map();

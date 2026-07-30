@@ -32,6 +32,8 @@ if (-not $GoogleCredentialsPath) { $GoogleCredentialsPath = $env:GOOGLE_APPLICAT
 
 $env:SEEN_JOBS_PATH = if ($env:SEEN_JOBS_PATH) { $env:SEEN_JOBS_PATH } else { "job_scraper/meenakshi_seen_jobs.json" }
 $env:TRACKER_CSV_PATH = if ($env:TRACKER_CSV_PATH) { $env:TRACKER_CSV_PATH } else { "automation/meenakshi_job_search_tracker.csv" }
+$env:SYNC_EXCLUDE_STATUSES = if ($env:SYNC_EXCLUDE_STATUSES) { $env:SYNC_EXCLUDE_STATUSES } else { "skipped,expired" }
+$env:SYNC_REPLACE_SHEET = if ($env:SYNC_REPLACE_SHEET) { $env:SYNC_REPLACE_SHEET } else { "true" }
 
 $logDir = Join-Path $RepoRoot "automation\logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
@@ -62,6 +64,13 @@ Write-Host "Starting Codex Meenakshi job agent..."
 $codexExit = $LASTEXITCODE
 if ($codexExit -ne 0) {
     throw "Codex Meenakshi job agent failed with exit code $codexExit. See $codexLog"
+}
+
+Write-Host "Enforcing strict Meenakshi fresher filter..."
+& node (Join-Path $PSScriptRoot "filter-meenakshi-jobs.mjs")
+$filterExit = $LASTEXITCODE
+if ($filterExit -ne 0) {
+    throw "Meenakshi strict filter failed with exit code $filterExit."
 }
 
 if ($GoogleSheetId) {

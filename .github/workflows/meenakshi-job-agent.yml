@@ -24,6 +24,8 @@ jobs:
       GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.MEENAKSHI_GOOGLE_SERVICE_ACCOUNT_JSON || secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
       SEEN_JOBS_PATH: job_scraper/meenakshi_seen_jobs.json
       TRACKER_CSV_PATH: automation/meenakshi_job_search_tracker.csv
+      SYNC_EXCLUDE_STATUSES: skipped,expired
+      SYNC_REPLACE_SHEET: "true"
 
     steps:
       - name: Checkout repository
@@ -67,6 +69,10 @@ jobs:
           output-file: automation/logs/meenakshi-job-agent-last-message.md
           sandbox: danger-full-access
           safety-strategy: drop-sudo
+
+      - name: Enforce strict Meenakshi fresher filter
+        if: always()
+        run: node automation/filter-meenakshi-jobs.mjs
 
       - name: Sync Meenakshi results to Google Sheets
         if: always()

@@ -231,4 +231,6 @@ node automation\sync-google-sheet.mjs
 
 The Meenakshi automation searches, ranks, saves state, writes short application notes for Strong Fit jobs, and syncs to Google Sheets.
 
+It also runs `automation/filter-meenakshi-jobs.mjs` after Codex completes and before Sheets sync. This hard filter marks any posting requiring `1+`, `1-2`, `2+`, `3+`, `4+`, `5+`, `6+`, or `minimum 1 year` of experience as skipped, and the Meenakshi Sheets sync replaces the sheet with only non-skipped rows.
+
 It does not currently generate tailored LaTeX CVs or cover letters, because the existing `$apply` workflow and templates are Rushikesh-specific. Add a Meenakshi-specific profile/template setup before enabling automated document drafting.
